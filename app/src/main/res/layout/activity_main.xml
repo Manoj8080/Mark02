@@ -49,12 +49,13 @@
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/enter"
+        android:inputType="numberDecimal"
         app:layout_constraintVertical_bias="0.11" />
 
-    <TextView
+    <EditText
         android:id="@+id/textView3"
-        android:layout_width="263dp"
-        android:layout_height="41dp"
+        android:layout_width="284dp"
+        android:layout_height="49dp"
         android:gravity="center|right"
         android:hint="TransactionID"
         android:textSize="26sp"
@@ -63,6 +64,7 @@
         app:layout_constraintHorizontal_bias="0.52"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/amount"
+        android:inputType="number"
         app:layout_constraintVertical_bias="0.07" />
 
     <Button
