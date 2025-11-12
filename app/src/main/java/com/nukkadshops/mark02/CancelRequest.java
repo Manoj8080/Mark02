@@ -6,9 +6,9 @@ public class CancelRequest {
     public String StoreID;
     public int Clientid;
     public long PlutusTransactionReferenceID;
-    public int Amount;
+    public String Amount;
 
-    public CancelRequest(int merchantID, String token, String storeID, int clientID, long ptrid, int amount) {
+    public CancelRequest(int merchantID, String token, String storeID, int clientID, long ptrid, String amount) {
         this.MerchantID = merchantID;
         this.SecurityToken = token;
         this.StoreID = storeID;

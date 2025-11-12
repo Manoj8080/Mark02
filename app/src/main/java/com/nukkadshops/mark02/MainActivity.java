@@ -1,6 +1,7 @@
 package com.nukkadshops.mark02;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -31,13 +32,15 @@ public class MainActivity extends AppCompatActivity {
     Button upi;
     Button card;
     ApiService apiService;
+    EditText tranid;
     private final int merchantID = 29610;
     private final String token = "a4c9741b-2889-47b8-be2f-ba42081a246e";
     private final String storeID = "1221258";
     private final int clientID = 1013483;
-    private final int amount = 234555;
+    //private final int amount;
     private long ptrid = 0;
     private int pollCount = 0; // To avoid infinite loop in test mode
+    private String allowPyamentMode="";
 
 
     @Override
@@ -49,6 +52,9 @@ public class MainActivity extends AppCompatActivity {
         editText = findViewById(R.id.amount);
         upi = findViewById(R.id.upibt);
         card = findViewById(R.id.cardbt);
+        tranid = findViewById(R.id.textView3);
+
+        apiService = ApiClient.getClient().create(ApiService.class);
 
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -59,10 +65,10 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
         card.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                startTransaction(card.getText().toString());
 
                 /*here api calling
                         .
@@ -76,6 +82,7 @@ public class MainActivity extends AppCompatActivity {
                         .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
+                                cancelTransaction();
                                 dialog.dismiss(); // closes the dialog
                                 // You can also handle cancel logic here if needed
                             }
@@ -88,6 +95,9 @@ public class MainActivity extends AppCompatActivity {
         upi.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                startTransaction(upi.getText().toString());
+
+
 
                 /*write api code here
                 .
@@ -101,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
                         .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
+                                cancelTransaction();
                                 dialog.dismiss(); // closes the dialog
                                 // You can also handle cancel logic here if needed
                             }
@@ -115,14 +126,19 @@ public class MainActivity extends AppCompatActivity {
 
     @Nullable
     // Step 1: UploadBilledTransaction
-    private void startTransaction() {
+    private void startTransaction(String mode) {
+        if(mode.equalsIgnoreCase("upi")){
+            allowPyamentMode="10";
+        }else{
+            allowPyamentMode="1";
+        }
         Log.d("PINE", "Uploading billed transaction...");
 
         UploadRequest request = new UploadRequest(
-                "16", // unique TransactionNumber
+                tranid.getText().toString().trim(), // unique TransactionNumber
                 1,                      // Sequence number
-                "10",                    // AllowedPaymentMode (1 = Card)
-                String.valueOf(amount), // Amount
+                allowPyamentMode,                    // AllowedPaymentMode (1 = Card)
+                editText.getText().toString().trim(), // Amount
                 "user123",              // UserID
                 merchantID,
                 token,
@@ -183,6 +199,8 @@ public class MainActivity extends AppCompatActivity {
                         switch (status.toUpperCase()) {
                             case "SUCCESS":
                                 Log.i("PINE", "✅ Payment Successful!");
+                                Intent intent = new Intent(MainActivity.this, Processing.class);
+                                startActivity(intent);
                                 break;
                             case "FAILED":
                                 Log.e("PINE", "❌ Payment Failed!");
@@ -215,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
         Log.w("PINE", "Cancelling transaction with PTRID: " + ptrid);
 
         CancelRequest cancelReq = new CancelRequest(
-                merchantID, token, storeID, clientID, ptrid, amount);
+                merchantID, token, storeID, clientID, ptrid, editText.getText().toString().trim());
 
         apiService.cancelTransaction(cancelReq).enqueue(new Callback<CancelResponse>() {
             @Override
