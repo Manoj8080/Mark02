@@ -11,6 +11,7 @@
         android:id="@+id/textView"
         android:layout_width="269dp"
         android:layout_height="57dp"
+        android:hint="Payment Status"
         android:textSize="28sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
