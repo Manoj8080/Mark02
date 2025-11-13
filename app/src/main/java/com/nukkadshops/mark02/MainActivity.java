@@ -177,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
     // Step 2: Poll GetCloudBasedTxnStatus
     private void pollStatus() {
         pollCount++;
-        if (pollCount > 12) { // safety stop after 1 minute (12 * 5s)
+        if (pollCount > 50) { // safety stop after 1 minute (12 * 5s)
             Log.w("PINE", "Polling timeout reached, cancelling transaction...");
             cancelTransaction();
             return;
