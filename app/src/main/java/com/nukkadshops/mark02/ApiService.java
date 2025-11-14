@@ -12,7 +12,7 @@ public interface ApiService {
     @POST("GetCloudBasedTxnStatus")
     Call<StatusResponse> getTxnStatus(@Body StatusRequest request);
 
-    @POST("CancelTransaction")
+    @POST("CancelTransactionForced")
     Call<CancelResponse> cancelTransaction(@Body CancelRequest request);
 }
 

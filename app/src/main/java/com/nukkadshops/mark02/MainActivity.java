@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
                 stopPollingCompletely();
 
                 new Handler().postDelayed(() -> cancelTransaction(), 2000);
+                alertDialog.dismiss();
             }
         });
 
@@ -235,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
         stopPollingCompletely();
 
         CancelRequest cancelReq = new CancelRequest(
-                merchantID, token, storeID, clientID, ptrid, editText.getText().toString().trim()
+                merchantID, token, storeID, clientID, ptrid, editText.getText().toString().trim(),true
         );
 
         apiService.cancelTransaction(cancelReq).enqueue(new Callback<CancelResponse>() {
