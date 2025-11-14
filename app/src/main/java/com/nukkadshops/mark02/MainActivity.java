@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
@@ -25,23 +26,22 @@ import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    //TextView textView;
     private Handler handler = new Handler();
 
-    EditText editText;
-    Button upi;
-    Button card;
+    EditText editText, tranid;
+    Button upi, card;
     ApiService apiService;
-    EditText tranid;
+
     private final int merchantID = 29610;
     private final String token = "a4c9741b-2889-47b8-be2f-ba42081a246e";
     private final String storeID = "1221258";
     private final int clientID = 1013483;
-    //private final int amount;
-    private long ptrid = 0;
-    private int pollCount = 0; // To avoid infinite loop in test mode
-    private String allowPyamentMode="";
 
+    private long ptrid = 0;
+    private int pollCount = 0;
+    private String allowPyamentMode = "";
+
+    private AlertDialog alertDialog;   // Store dialog instance
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,12 +50,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         editText = findViewById(R.id.amount);
+        tranid = findViewById(R.id.textView3);
         upi = findViewById(R.id.upibt);
         card = findViewById(R.id.cardbt);
-        tranid = findViewById(R.id.textView3);
 
         apiService = ApiClient.getClient().create(ApiService.class);
-
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -63,185 +62,187 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-
-
-        card.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startTransaction(card.getText().toString());
-
-                /*here api calling
-                        .
-                .
-                .
-                */
-
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setMessage("Payment Processing..!")
-                        .setCancelable(false) // prevents closing by tapping outside
-                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                cancelTransaction();
-                                dialog.dismiss(); // closes the dialog
-                                // You can also handle cancel logic here if needed
-                            }
-                        });
-
-                AlertDialog alert = builder.create();
-                alert.show();
-            }
-        });
-        upi.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startTransaction(upi.getText().toString());
-
-
-
-                /*write api code here
-                .
-                .
-                .
-                .*/
-
-                AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                builder.setMessage("Payment Processing..!")
-                        .setCancelable(false) // prevents closing by tapping outside
-                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                cancelTransaction();
-                                dialog.dismiss(); // closes the dialog
-                                // You can also handle cancel logic here if needed
-                            }
-                        });
-                AlertDialog alert = builder.create();
-                alert.show();
-
-            }
-        });
+        card.setOnClickListener(v -> showProcessingDialog("CARD"));
+        upi.setOnClickListener(v -> showProcessingDialog("UPI"));
 
     }
 
-    @Nullable
-    // Step 1: UploadBilledTransaction
+    // ---------------- SHOW PROCESSING DIALOG ----------------
+
+    private void showProcessingDialog(String mode) {
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setMessage("Payment Processing..!")
+                .setCancelable(false)
+                .setNegativeButton("Cancel", null);
+
+        alertDialog = builder.create();
+        alertDialog.show();
+
+        // Override Cancel Button to prevent auto-dismiss
+        alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(view -> {
+            if (ptrid == 0) {
+                Toast.makeText(MainActivity.this, "Please wait... transaction not started!", Toast.LENGTH_SHORT).show();
+            } else {
+                stopPollingCompletely();
+
+                new Handler().postDelayed(() -> cancelTransaction(), 2000);
+            }
+        });
+
+        startTransaction(mode);
+    }
+
+
+    // ---------------- START TRANSACTION ----------------
+
     private void startTransaction(String mode) {
-        if(mode.equalsIgnoreCase("upi")){
-            allowPyamentMode="10";
-        }else{
-            allowPyamentMode="1";
-        }
+
+        allowPyamentMode = mode.equalsIgnoreCase("upi") ? "10" : "1";
+
         Log.d("PINE", "Uploading billed transaction...");
 
         UploadRequest request = new UploadRequest(
-                tranid.getText().toString().trim(), // unique TransactionNumber
-                1,                      // Sequence number
-                allowPyamentMode,                    // AllowedPaymentMode (1 = Card)
-                editText.getText().toString().trim(), // Amount
-                "user123",              // UserID
+                tranid.getText().toString().trim(),
+                1,
+                allowPyamentMode,
+                editText.getText().toString().trim(),
+                "user123",
                 merchantID,
                 token,
                 storeID,
                 clientID,
-                1                 // AutoCancelDurationInMinutes
+                5
         );
 
         apiService.uploadBilledTransaction(request).enqueue(new Callback<UploadResponse>() {
             @Override
             public void onResponse(Call<UploadResponse> call, Response<UploadResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    UploadResponse res = response.body();
-                    Log.i("PINE", "Upload Response: " + new Gson().toJson(res));
-
-                    if (res.ResponseCode == 0) {
-                        ptrid = res.PlutusTransactionReferenceID;
-                        Log.i("PINE", "PTRID received: " + ptrid);
-                        Log.i("PINE", "Ask cashier to enter PTRID on terminal.");
-                        pollStatus(); // Start polling status
-                    } else {
-                        Log.e("PINE", "Upload failed: " + res.ResponseMessage);
-                    }
-                } else {
+                if (!response.isSuccessful() || response.body() == null) {
                     Log.e("PINE", "Upload failed: " + response.message());
+                    return;
+                }
+
+                UploadResponse res = response.body();
+                Log.i("PINE", "Upload Response: " + new Gson().toJson(res));
+
+                if (res.ResponseCode == 0) {
+                    ptrid = res.PlutusTransactionReferenceID;
+                    Log.i("PINE", "PTRID: " + ptrid);
+                    pollStatus();
+                } else {
+                    Log.e("PINE", "Upload error: " + res.ResponseMessage);
                 }
             }
 
             @Override
             public void onFailure(Call<UploadResponse> call, Throwable t) {
-                Log.e("PINE", "Upload Error: " + t.getMessage());
+                Log.e("PINE", "Upload error: " + t.getMessage());
             }
         });
     }
 
-    // Step 2: Poll GetCloudBasedTxnStatus
+    // ---------------- POLL STATUS EVERY 5 SEC ----------------
+
     private void pollStatus() {
+
         pollCount++;
-        if (pollCount > 50) { // safety stop after 1 minute (12 * 5s)
-            Log.w("PINE", "Polling timeout reached, cancelling transaction...");
-            cancelTransaction();
+
+        if (pollCount > 60) {
+            Log.w("PINE", "Timeout → Auto cancel");
+            stopPollingCompletely();
+
+            new Handler().postDelayed(() -> cancelTransaction(), 2000);
             return;
         }
 
         StatusRequest req = new StatusRequest(merchantID, token, storeID, clientID, ptrid);
-        Log.d("PINE", "Checking status for PTRID: " + ptrid);
+        Log.d("PINE", "Polling PTRID: " + ptrid);
 
         apiService.getTxnStatus(req).enqueue(new Callback<StatusResponse>() {
             @Override
             public void onResponse(Call<StatusResponse> call, Response<StatusResponse> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    StatusResponse res = response.body();
-                    Log.i("PINE", "Status Response: " + new Gson().toJson(res));
-                    if (res.TransactionData != null) {
-                        String status = res.TransactionData.TransactionStatus;
-                        Log.i("PINE", "Transaction Status: " + status);
 
-                        switch (status.toUpperCase()) {
-                            case "SUCCESS":
-                                Log.i("PINE", "✅ Payment Successful!");
-                                Intent intent = new Intent(MainActivity.this, Processing.class);
-                                startActivity(intent);
-                                break;
-                            case "FAILED":
-                                Log.e("PINE", "❌ Payment Failed!");
-                                break;
-                            case "CANCELLED":
-                                Log.w("PINE", "⚠️ Payment Cancelled!");
-                                break;
-                            default:
-                                Log.d("PINE", "⏳ Still waiting... (" + pollCount + ")");
-                                handler.postDelayed(() -> pollStatus(), 5000);
-                                break;
-                        }
-                    }
-                } else {
-                    Log.e("PINE", "Status check failed: " + response.message());
+                if (!response.isSuccessful() || response.body() == null) {
                     handler.postDelayed(() -> pollStatus(), 5000);
+                    return;
                 }
+
+                StatusResponse res = response.body();
+                Log.i("PINE", "Status Response: " + new Gson().toJson(res));
+
+                if (res.TransactionData == null || res.TransactionData.isEmpty()) {
+                    handler.postDelayed(() -> pollStatus(), 5000);
+                    return;
+                }
+
+                String approvalCode = "";
+
+                for (StatusResponse.TransactionData tag : res.TransactionData) {
+                    if ("ApprovalCode".equalsIgnoreCase(tag.Tag)) {
+                        approvalCode = tag.Value;
+                        break;
+                    }
+                }
+
+                if (approvalCode.equals("00")) {
+                    stopPollingCompletely();
+
+                    Intent intent = new Intent(MainActivity.this, Processing.class);
+                    intent.putExtra("PTRID", ptrid);
+                    intent.putExtra("success", res.ResponseMessage);
+                    intent.putExtra("transaction number",tranid.getText().toString().trim());
+                    intent.putExtra("merchant id",merchantID);
+                    intent.putExtra("security token",token);
+                    intent.putExtra("client id",clientID);
+                    intent.putExtra("amount",editText.getText().toString().trim());
+                    intent.putExtra("allowed payment mode",allowPyamentMode);
+                    intent.putExtra("store id",storeID);
+                    startActivity(intent);
+                    return;
+                }
+
+                if (!approvalCode.isEmpty()) {
+                    stopPollingCompletely();
+                    Toast.makeText(MainActivity.this, "Payment Failed", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                handler.postDelayed(() -> pollStatus(), 5000);
             }
 
             @Override
             public void onFailure(Call<StatusResponse> call, Throwable t) {
-                Log.e("PINE", "Status check error: " + t.getMessage());
                 handler.postDelayed(() -> pollStatus(), 5000);
             }
         });
     }
 
-    // Step 3: CancelTransaction (optional)
+
+    // ---------------- STOP POLLING ----------------
+
+    private void stopPollingCompletely() {
+        handler.removeCallbacksAndMessages(null);
+        pollCount = 0;
+    }
+
+
+    // ---------------- CANCEL TRANSACTION ----------------
+
     private void cancelTransaction() {
-        Log.w("PINE", "Cancelling transaction with PTRID: " + ptrid);
+
+        Log.w("PINE", "Cancel transaction PTRID: " + ptrid);
+        stopPollingCompletely();
 
         CancelRequest cancelReq = new CancelRequest(
-                merchantID, token, storeID, clientID, ptrid, editText.getText().toString().trim());
+                merchantID, token, storeID, clientID, ptrid, editText.getText().toString().trim()
+        );
 
         apiService.cancelTransaction(cancelReq).enqueue(new Callback<CancelResponse>() {
             @Override
             public void onResponse(Call<CancelResponse> call, Response<CancelResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     Log.w("PINE", "Cancel Response: " + new Gson().toJson(response.body()));
-                } else {
-                    Log.e("PINE", "Cancel failed: " + response.message());
                 }
             }
 
