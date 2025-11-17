@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiClient {
     private static Retrofit retrofit;
-    private static final String BASE_URL = "https://instore-ism.uat.pinelabs.com/api/CloudBasedIntegration/V1/";
+    private static final String BASE_URL = "https://75df3dda161d.ngrok-free.app/";
 
     public static Retrofit getClient() {
         if (retrofit == null) {

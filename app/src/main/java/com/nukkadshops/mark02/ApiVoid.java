@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class ApiVoid {
     private static Retrofit retrofit1;
-    private static final String BASE_URL ="https://www.plutuscloudserviceuat.in:8201/API/CloudBasedIntegration/V1/";
+    private static final String BASE_URL ="https://75df3dda161d.ngrok-free.app/";
 
     public static Retrofit getvoid(){
         if (retrofit1 == null){

@@ -5,6 +5,6 @@ import retrofit2.http.Body;
 import retrofit2.http.POST;
 
 public interface voidService{
-    @POST("UploadBilledTransaction")
+    @POST("api/void")
     Call<VoidResponse> uploadBilledTransaction(@Body VoidRequest request);
 }

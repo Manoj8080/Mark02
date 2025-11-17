@@ -7,7 +7,7 @@ public class CancelRequest {
     public int Clientid;
     public long PlutusTransactionReferenceID;
     public String Amount;
-    public boolean TaketToHomeScreen;
+    public boolean TakeToHomeScreen;
 
     public CancelRequest(int merchantID, String token, String storeID, int clientID, long ptrid, String amount, boolean takeToHomeScreen) {
         this.MerchantID = merchantID;
@@ -16,6 +16,6 @@ public class CancelRequest {
         this.Clientid = clientID;
         this.PlutusTransactionReferenceID = ptrid;
         this.Amount = amount;
-        this.TaketToHomeScreen = takeToHomeScreen;
+        this.TakeToHomeScreen = takeToHomeScreen;
     }
 }

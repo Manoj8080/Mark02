@@ -6,13 +6,13 @@ import retrofit2.http.POST;
 
 public interface ApiService {
 
-    @POST("UploadBilledTransaction")
+    @POST("api/upload")
     Call<UploadResponse> uploadBilledTransaction(@Body UploadRequest request);
 
-    @POST("GetCloudBasedTxnStatus")
+    @POST("api/status")
     Call<StatusResponse> getTxnStatus(@Body StatusRequest request);
 
-    @POST("CancelTransactionForced")
+    @POST("api/forceCancel")
     Call<CancelResponse> cancelTransaction(@Body CancelRequest request);
 }
 
